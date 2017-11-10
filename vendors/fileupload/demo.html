@@ -1,0 +1,82 @@
+<html>
+
+<head>
+    <title></title>
+</head>
+
+<body>
+    <form id="uploadForm">
+        <button type="button" class="start">开始上传</button>
+        <button type="button" class="delete">删除</button>
+        <button type="button" class="cancel">取消</button>
+        <input type="file" id="fileUpload" name="files[]" />
+        <div class="progress"></div>
+    </form>
+    <!-- 进度条 -->
+    <div id="progress">
+        <div class="bar" style="width: 0%;"></div>
+    </div>
+
+    <script src="../jquery-1.12.4.min.js"></script>
+    <script src="./jquery.ui.widget.js"></script>
+    <script src="./jquery.iframe-transport.js"></script>
+    <script src="./jquery.fileupload.js"></script>
+    <script>
+        var jqXHR
+        $(function () {
+            jqXHR = $('#fileUpload').fileupload({
+                dropZone: $('#uploadForm'),
+                dataType: 'json',
+                autoUpload: false,
+                formData: {
+                    example: 'test'
+                },
+                add: function (e, data) {
+                    console.log(data);
+                    // 注册开始上传按钮事件
+                    $('.start').one('click', function () {
+                        if (data.files.length > 0) {
+                            data.submit();
+                        } else {
+                            console.log('请选择要上传的文件')
+                        }
+                    })
+                    // 注册删除按钮事件
+                    $('.delete').one('click', function () {
+                        data.files.length = 0;
+                    })
+                    // 注册取消按钮事件
+                    $('.cancel').one('click', function () {
+                        if (data.files.length > 0) {
+                            data.abort();
+                        }
+                    })
+                },
+                // 上传过程中的回调函数
+                progress: function (e, data) {
+                    var progress = parseInt(data.loaded / data.total * 100, 10);
+                    $(".bar").text(progress + '%');
+                    $('#progress .bar').css(
+                        'width',
+                        progress + '%'
+                    );
+                },
+                // 上传完成后的执行逻辑
+                done: function (e, data) {
+                    $.each(data.result.files, function (index, file) {
+                        $('<p/>').text(file.name).appendTo(document.body);
+                    });
+                },
+                // 上传失败后的执行逻辑
+                fail: function (e, data) {
+
+                },
+                always: function (e, data) {
+
+                }
+            });
+        });
+    </script>
+</body>
+
+</html>

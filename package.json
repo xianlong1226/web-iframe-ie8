@@ -1,0 +1,31 @@
+{
+	"name": "cppm_frontend",
+	"version": "0.0.1",
+	"description": "测评项目管理系统",
+	"main": "app.js",
+	"scripts": {},
+	"keywords": [
+		"knockoutjs"
+	],
+	"author": "xianlong.zeng",
+	"license": "ISC",
+	"devDependencies": {
+		"async": "^2.6.0",
+		"colors": "^1.1.2",
+		"del": "^3.0.0",
+		"express": "^4.16.2",
+		"gulp": "^3.9.1",
+		"gulp-clean-css": "^3.9.0",
+		"gulp-htmlmin": "^3.0.0",
+		"gulp-imagemin": "^3.4.0",
+		"gulp-less": "^3.3.2",
+		"gulp-rev": "^8.1.0",
+		"gulp-uglify": "^3.0.0",
+		"gulp-usemin": "^0.3.28",
+		"http-proxy-middleware": "^0.17.4",
+		"less": "^2.7.3",
+		"minify": "^3.0.2",
+		"morgan": "^1.9.0"
+	},
+	"dependencies": {}
+}
