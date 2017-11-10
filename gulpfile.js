@@ -155,8 +155,14 @@ gulp.task('fonts', ['images'], function(){
         .pipe(gulp.dest('./dist'));
 });
 
+// copy vendors
+gulp.task('vendors', ['fonts'], function(){
+    return gulp.src(['./tmp/vendors/**/*'], { base: './tmp' })
+        .pipe(gulp.dest('./dist'));
+});
+
 // 整合压缩html
-gulp.task('minify', ['fonts'], function(){
+gulp.task('minify', ['vendors'], function(){
     return gulp.src(['./tmp/*.html'], { base: './tmp' })
         .pipe(usemin({
             html: [ function(){ return htmlmin({ collapseWhitespace: true }); } ],
