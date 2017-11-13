@@ -2,6 +2,7 @@
 
 const fs = require('fs');
 const path = require('path');
+const crypto = require('crypto');
 
 const gulp = require('gulp');
 const less = require('gulp-less');
@@ -15,6 +16,95 @@ const rev = require('gulp-rev');
 const minify = require('minify');
 const async = require('async');
 
+//图片和字体等文件的路径
+let filePathObj = {};
+
+function fileMd5(inputPath) {
+    var hash = crypto.createHash('md5');
+    var input = fs.readFileSync(inputPath);
+
+    hash.update(input);
+    var output = hash.digest('hex');
+
+    return output;
+}
+
+function handleCssFile(cssText, cssPath){
+    let fileArr = cssText.match(/url\s*\(\s*[\'\"]?(.*?)(?:[\'\"])?\s*\)/gi);
+    if (!fileArr || fileArr.length === 0){
+        return cssText;
+    }
+
+    fileArr.forEach(item => {
+        let url = item.match(/url\s*\(\s*[\'\"]?(.*?)(?:[\'\"])?\s*\)/i)[1];
+        if (url){
+            let fullurl = path.join(cssPath, url);
+            if (!filePathObj[fullurl]){
+                let fileHash = fileMd5(fullurl);
+                let dirPath = path.dirname(fullurl);
+                let extName = path.extname(fullurl);
+                let baseName = path.basename(fullurl, extName);
+
+                let fileName = baseName + '-' + fileHash + extName;
+                let publishDir = '';
+
+                if (extName === '.jpg' || extName === '.jpeg' || extName === '.png' || extName === '.gif'){
+                    publishDir = path.join(__dirname, 'tmp/images');
+                    filePathObj[fullurl] = '/images/' + baseName + '-' + fileHash + extName;
+                } else {
+                    publishDir = path.join(__dirname, 'tmp/fonts');
+                    filePathObj[fullurl] = '/fonts/' + baseName + '-' + fileHash + extName;
+                }
+
+                // 将文件写到发布目录中
+                fs.writeFileSync(path.join(publishDir, fileName), fs.readFileSync(fullurl));
+            }
+
+            cssText = cssText.replace(url, filePathObj[fullurl]);
+        }
+    });
+
+    return cssText;
+}
+
+function handleHtmlFile(htmlText, htmlPath){
+    let fileArr = htmlText.match(/<img.*?(?:>|\/>)/gi);
+    if (!fileArr || fileArr.length === 0){
+        return htmlText;
+    }
+
+    fileArr.forEach(item => {
+        let url = item.match(/src\s*=\s*[\'\"]?([^\'\"]*)[\'\"]?/i)[1];
+        if (url){
+            let fullurl = path.join(htmlPath, url);
+            if (!filePathObj[fullurl]){
+                let fileHash = fileMd5(fullurl);
+                let dirPath = path.dirname(fullurl);
+                let extName = path.extname(fullurl);
+                let baseName = path.basename(fullurl, extName);
+
+                let fileName = baseName + '-' + fileHash + extName;
+                let publishDir = '';
+
+                if (extName === '.jpg' || extName === '.jpeg' || extName === '.png' || extName === '.gif'){
+                    publishDir = path.join(__dirname, 'tmp/images');
+                    filePathObj[fullurl] = '/images/' + baseName + '-' + fileHash + extName;
+                } else {
+                    publishDir = path.join(__dirname, 'tmp/fonts');
+                    filePathObj[fullurl] = '/fonts/' + baseName + '-' + fileHash + extName;
+                }
+
+                // 将文件写到发布目录中
+                fs.writeFileSync(path.join(publishDir, fileName), fs.readFileSync(fullurl));
+            }
+
+            htmlText = htmlText.replace(url, filePathObj[fullurl]);
+        }
+    });
+
+    return htmlText;
+}
+
 gulp.task('clean', function () {
     return del(['tmp', 'dist']);
 });
@@ -24,6 +114,8 @@ gulp.task('mktmpdir', ['clean'], function(callback){
     fs.mkdirSync(path.join(__dirname, 'tmp'));
     fs.mkdirSync(path.join(__dirname, 'tmp/js'));
     fs.mkdirSync(path.join(__dirname, 'tmp/css'));
+    fs.mkdirSync(path.join(__dirname, 'tmp/images'));
+    fs.mkdirSync(path.join(__dirname, 'tmp/fonts'));
 
     return callback();
 });
@@ -61,6 +153,9 @@ gulp.task('handle-components', ['copy'], function(callback){
     let componentsjs = 'var components = {}; \n'; 
     let commonless = fs.readFileSync(path.join(__dirname, 'css/common.less'), 'utf8');
 
+    // 处理css中的图片和字体路径
+    commonless = handleCssFile(commonless, path.join(__dirname, 'css'));
+
     let components = fs.readdirSync(componentsRootPath);
     async.map(components, function(componentName, callback){
         try {
@@ -69,11 +164,17 @@ gulp.task('handle-components', ['copy'], function(callback){
             let data = fs.readFileSync(path.join(componentsRootPath, componentName, 'data.json'), 'utf8');
             let css = fs.readFileSync(path.join(componentsRootPath, componentName, 'style.less'), 'utf8');
 
+            // 处理css中的图片和字体路径
+            css = handleCssFile(css, path.join(componentsRootPath, componentName));
+
             // 将组件中的css拼接到common.less
             commonless += '/** component ' + componentName + ' */\n' + css + '\n\n';
 
             // minify html
             minify(path.join(componentsRootPath, componentName, 'template.html'), function(err, template){
+                // 处理html中的图片
+                template = handleHtmlFile(template, path.join(componentsRootPath, componentName));
+
                 // 替换组件js文件中的data.json引用和template.html引用
                 js = js.replace(/require\(\s*'\.\/data.json'\s*\)/, data).replace(/require\(\s*'\.\/template.html'\s*\)/, '\'' + template + '\'');
                 // 将组件包含到独立作用域中
@@ -128,6 +229,11 @@ gulp.task('handle-pages', ['handle-components'], function(callback){
                 js = js.replace(/require\(\s*'\.\/data.json'\s*\)/, data);
                 js = '<script type="text/javascript">\n' + js + '\n</script>\n';
                 css = '<style>\n' + output.css + '\n</style>\n';
+
+                // 处理css中的图片路径
+                css = handleCssFile(css, path.join(pageRootPath, pageName));
+                // 处理html中的图片路径
+                page = handleHtmlFile(page, path.join(pageRootPath, pageName));
 
                 page = page.replace(/<\/\s*head\s*>/, css + '</head>').replace(/<\/\s*body\s*>/, js + '</body>');
 
