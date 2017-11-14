@@ -1,0 +1,29 @@
+<html>
+    <head>
+        <title>index</title>
+        <!-- build:css ./css/common.css -->
+        <link rel="stylesheet" type="text/css" href="./css/common.less">
+        <!-- endbuild -->
+    </head>
+    <body>
+        <!-- ko component: {name: 'header'} -->
+        <!-- /ko -->
+        <div class="page">
+            <img src="./images/a.jpg" alt="" />
+            <label class="title">姓名</label><label data-bind="text: name"></label>
+            <label class="title">年龄</label><label data-bind="text: age"></label>
+        </div>
+        <!-- ko component: {name: 'footer'} -->
+        <!-- /ko -->
+
+        <script src="./vendors/jquery-1.9.0.min.js"></script>
+        <script src="./vendors/knockout-3.4.2.js"></script>
+        <script src="./vendors/knockout.mapping-2.4.1.js"></script>
+        <!-- build:js ./js/base.js -->
+        <script src="./js/base.js"></script>
+        <!-- endbuild -->
+        <!-- build:js ./js/components.js -->
+        <script src="./js/components.js"></script>
+        <!-- endbuild -->
+    </body>
+</html>

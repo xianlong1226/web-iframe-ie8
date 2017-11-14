@@ -1,10 +1,10 @@
 /* global __dirname: false */
 
-const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
 
 const gulp = require('gulp');
+const cache = require('gulp-cached');
 const less = require('gulp-less');
 const imagemin = require('gulp-imagemin');
 const del = require('del');
@@ -15,6 +15,10 @@ const cleanCss = require('gulp-clean-css');
 const rev = require('gulp-rev');
 const minify = require('minify');
 const async = require('async');
+
+let fs = require('fs');
+const MemoryFileSystem = require("memory-fs");
+const fsm = new MemoryFileSystem();
 
 //图片和字体等文件的路径
 let filePathObj = {};
@@ -105,17 +109,24 @@ function handleHtmlFile(htmlText, htmlPath){
     return htmlText;
 }
 
+let execClean = true;
 gulp.task('clean', function () {
-    return del(['tmp', 'dist']);
+    let dir = [];
+    if (execClean) {
+        dir = ['tmp', 'dist'];
+    }
+    return del(dir);
 });
 
 // 首先在项目根目录下创建临时文件夹
 gulp.task('mktmpdir', ['clean'], function(callback){
-    fs.mkdirSync(path.join(__dirname, 'tmp'));
-    fs.mkdirSync(path.join(__dirname, 'tmp/js'));
-    fs.mkdirSync(path.join(__dirname, 'tmp/css'));
-    fs.mkdirSync(path.join(__dirname, 'tmp/images'));
-    fs.mkdirSync(path.join(__dirname, 'tmp/fonts'));
+    if (execClean) {
+        fs.mkdirSync(path.join(__dirname, 'tmp'));
+        fs.mkdirSync(path.join(__dirname, 'tmp/js'));
+        fs.mkdirSync(path.join(__dirname, 'tmp/css'));
+        fs.mkdirSync(path.join(__dirname, 'tmp/images'));
+        fs.mkdirSync(path.join(__dirname, 'tmp/fonts'));
+    }
 
     return callback();
 });
@@ -141,8 +152,9 @@ gulp.task('copy', ['mktmpdir'], function() {
         '!package*',
         '!webpack.*',
         '!node_modules',
-        '!node_modules/**'
-    ]).pipe(gulp.dest('tmp/'));
+        '!node_modules/**',
+        '!README.md'
+    ]).pipe(cache('copy')).pipe(gulp.dest('tmp/'));
 });
 
 // 处理组件模块
@@ -251,6 +263,7 @@ gulp.task('handle-pages', ['handle-components'], function(callback){
 // 压缩图片
 gulp.task('images', ['handle-pages'],function(){
     return gulp.src(['./tmp/images/**/*.png','./tmp/images/**/*.jpg','./tmp/images/**/*.jpeg','./tmp/images/**/*.gif'], { base: './tmp' })
+        .pipe(cache('images'))
         .pipe(imagemin())
         .pipe(gulp.dest('./dist'));
 });
@@ -258,18 +271,21 @@ gulp.task('images', ['handle-pages'],function(){
 // copy fonts
 gulp.task('fonts', ['images'], function(){
     return gulp.src(['./tmp/fonts/**/*'], { base: './tmp' })
+        .pipe(cache('fonts'))
         .pipe(gulp.dest('./dist'));
 });
 
 // copy vendors
 gulp.task('vendors', ['fonts'], function(){
     return gulp.src(['./tmp/vendors/**/*'], { base: './tmp' })
+        .pipe(cache('vendors'))
         .pipe(gulp.dest('./dist'));
 });
 
 // 整合压缩html
 gulp.task('minify', ['vendors'], function(){
     return gulp.src(['./tmp/*.html'], { base: './tmp' })
+        .pipe(cache('minify'))
         .pipe(usemin({
             html: [ function(){ return htmlmin({ collapseWhitespace: true }); } ],
             css: [ less, rev ],
@@ -280,8 +296,10 @@ gulp.task('minify', ['vendors'], function(){
 
 //develop
 gulp.task('default', ['minify'], function(){
-    let watcher = gulp.watch(['./pages', './js', './css', './images', './components', './vendors'],['minify']);
+    // 设置不再清空目录
+    execClean = false;
 
+    let watcher = gulp.watch(['./pages/**/*', './js/**/*', './css/**/*', './images/**/*', './components/**/*', './vendors/**/*'], ['minify'], { ignoreInitial: false });
     watcher.on('change', function(event) {
         console.log('File ' + event.path + ' was ' + event.type + ', running tasks...'); // eslint-disable-line no-console
     });
